@@ -1,0 +1,9 @@
+github.com/expr-lang/expr v1.16.7 h1:gCIiHt5ODA0xIaDbD0DPKyZpM9Drph3b3lolYAYq2Kw=
+github.com/expr-lang/expr v1.16.7/go.mod h1:8/vRC7+7HBzESEqt5kKpYXxrxkr31SaO8r40VO/1IT4=
+github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
+github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
+github.com/sohaha/zlsgo v1.7.12 h1:KAz4h7RHZNuoCAn6vyK8iwKnSbjP6bSCDrpS/fqyyA4=
+github.com/sohaha/zlsgo v1.7.12/go.mod h1:7LViqB5ll09RnlU5V5AW0oBnqFg260/q+B/SGDNNdmQ=
+golang.org/x/crypto v0.21.0 h1:X31++rzVUdKhX5sWmSOFZxx8UW/ldWx55cbf08iNAMA=
+golang.org/x/net v0.23.0 h1:7EYJ93RZ9vYSZAIb2x3lnuvqO5zneoD6IvWjuhfxjTs=
+golang.org/x/text v0.14.0 h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=
