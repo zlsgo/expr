@@ -7,17 +7,18 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
 	"github.com/shopspring/decimal"
+	"github.com/sohaha/zlsgo/zlog"
 	"github.com/sohaha/zlsgo/ztype"
 )
 
 type (
-	d struct {
-		Value float64
+	decimalPatcher struct {
 	}
-	decimalPatcher struct{}
 )
 
-var decimalType = reflect.TypeOf(d{})
+var (
+	decimalType = reflect.TypeOf(decimal.Decimal{})
+)
 
 func (decimalPatcher) isNumber(typ reflect.Type) bool {
 	if typ == decimalType {
@@ -51,7 +52,20 @@ func (d decimalPatcher) Visit(node *ast.Node) {
 			callee = &ast.IdentifierNode{Value: "_Mul"}
 		case "/":
 			callee = &ast.IdentifierNode{Value: "_Div"}
+		case "%":
+			callee = &ast.IdentifierNode{Value: "_Mod"}
+		case ">":
+			callee = &ast.IdentifierNode{Value: "_Gt"}
+		case "<":
+			callee = &ast.IdentifierNode{Value: "_Lt"}
+		case "==":
+			callee = &ast.IdentifierNode{Value: "_Eq"}
+		case ">=":
+			callee = &ast.IdentifierNode{Value: "_Gte"}
+		case "<=":
+			callee = &ast.IdentifierNode{Value: "_Lte"}
 		default:
+			zlog.Debug(n.Operator)
 			return
 		}
 
@@ -70,25 +84,80 @@ func toDecimal(params ...any) (x, y decimal.Decimal, err error) {
 	}
 
 	var (
-		px float64
-		py float64
+		ok bool
 	)
 
-	if v, ok := params[0].(d); !ok {
-		px = ztype.ToFloat64(params[0])
-	} else {
-		px = v.Value
-	}
-	if v, ok := params[1].(d); !ok {
-		py = ztype.ToFloat64(params[1])
-	} else {
-		py = v.Value
+	if x, ok = params[0].(decimal.Decimal); !ok {
+		if x, err = decimal.NewFromString(ztype.ToString(params[0])); err != nil {
+			return
+		}
 	}
 
-	return decimal.NewFromFloat(px), decimal.NewFromFloat(py), nil
+	if y, ok = params[1].(decimal.Decimal); !ok {
+		if y, err = decimal.NewFromString(ztype.ToString(params[1])); err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 var decimalHandler = []expr.Option{
+	expr.Function(
+		"_Eq",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return x.Cmp(y) == 0, nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
+	expr.Function(
+		"_Gt",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return x.GreaterThan(y), nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
+	expr.Function(
+		"_Gte",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return !(x.Cmp(y) == -1), nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
+	expr.Function(
+		"_Lt",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return x.LessThan(y), nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
+	expr.Function(
+		"_Lte",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return !(x.Cmp(y) == 1), nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
 	expr.Function(
 		"_Mul",
 		func(params ...any) (any, error) {
@@ -96,9 +165,9 @@ var decimalHandler = []expr.Option{
 			if err != nil {
 				return nil, err
 			}
-			f, _ := x.Mul(y).Float64()
-			return f, nil
+			return x.Mul(y), nil
 		},
+		new(func(x, y any) (decimal.Decimal, error)),
 	),
 	expr.Function(
 		"_Div",
@@ -107,9 +176,10 @@ var decimalHandler = []expr.Option{
 			if err != nil {
 				return nil, err
 			}
-			f, _ := x.Div(y).Float64()
-			return f, nil
+
+			return x.Div(y), nil
 		},
+		new(func(x, y any) (decimal.Decimal, error)),
 	),
 	expr.Function(
 		"_Add",
@@ -118,9 +188,9 @@ var decimalHandler = []expr.Option{
 			if err != nil {
 				return nil, err
 			}
-			f, _ := x.Add(y).Float64()
-			return f, nil
+			return x.Add(y), nil
 		},
+		new(func(x, y any) (decimal.Decimal, error)),
 	),
 	expr.Function(
 		"_Sub",
@@ -129,26 +199,52 @@ var decimalHandler = []expr.Option{
 			if err != nil {
 				return nil, err
 			}
-			f, _ := x.Sub(y).Float64()
-			return f, nil
+			return x.Sub(y), nil
 		},
+		new(func(x, y any) (decimal.Decimal, error)),
+	),
+	expr.Function(
+		"_Mod",
+		func(params ...any) (any, error) {
+			x, y, err := toDecimal(params...)
+			if err != nil {
+				return nil, err
+			}
+			return x.Mod(y), nil
+		},
+		new(func(x, y any) (decimal.Decimal, error)),
 	),
 	expr.Patch(decimalPatcher{}),
 }
 
-func CompileDecimal(code string, env ...any) (*Program, error) {
-	ops := []expr.Option{}
-	for i := range env {
-		if o, ok := env[i].(expr.Option); ok {
-			ops = append(ops, o)
+func CompileDecimal(input string, env any, ops ...any) (*Program, error) {
+	o := make([]expr.Option, 0, len(ops)+1)
+	ops = append(ops, env)
+	for i := range ops {
+		if ops[i] == nil {
+			continue
+		}
+		if op, ok := ops[i].(expr.Option); ok {
+			o = append(o, op)
 		} else {
-			ops = append(ops, expr.Env(env[i]))
+			o = append(o, expr.Env(ops[i]))
 		}
 	}
-	program, err := expr.Compile(code, append(decimalHandler, ops...)...)
+
+	program, err := expr.Compile(input, append(decimalHandler, o...)...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Program{program: program}, nil
+}
+
+func EvalDecimal(input string, env any) (value ztype.Type, err error) {
+	var p *Program
+	p, err = CompileDecimal(input, env)
+	if err != nil {
+		return
+	}
+
+	return Run(p, env)
 }

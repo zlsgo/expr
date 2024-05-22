@@ -3,6 +3,7 @@ package expr
 import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/sohaha/zlsgo/ztype"
 )
 
 type Program struct {
@@ -26,14 +27,22 @@ func Compile(input string, env ...any) (*Program, error) {
 	return &Program{program: program}, nil
 }
 
-func Run(p *Program, env any) (any, error) {
-	return vm.Run(p.program, env)
+func Run(p *Program, env any) (value ztype.Type, err error) {
+	var resp any
+	resp, err = vm.Run(p.program, env)
+	if err != nil {
+		return
+	}
+
+	value = ztype.New(resp)
+	return
 }
 
-func Eval(input string, env any) (any, error) {
-	p, err := Compile(input)
+func Eval(input string, env any) (value ztype.Type, err error) {
+	var p *Program
+	p, err = Compile(input)
 	if err != nil {
-		return nil, err
+		return
 	}
 	return Run(p, env)
 }
